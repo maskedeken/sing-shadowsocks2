@@ -43,6 +43,8 @@ type Method struct {
 	encryptConstructor func(key []byte, salt []byte) (cipher.Stream, error)
 	decryptConstructor func(key []byte, salt []byte) (cipher.Stream, error)
 	key                []byte
+
+	reducedIVEntropy bool
 }
 
 func NewMethod(ctx context.Context, methodName string, options C.MethodOptions) (C.Method, error) {
@@ -160,6 +162,10 @@ func (m *Method) DialPacketConn(conn net.Conn) N.NetPacketConn {
 	}
 }
 
+func (m *Method) ReducedIVEntropy(b bool) {
+	m.reducedIVEntropy = b
+}
+
 type clientConn struct {
 	N.ExtendedConn
 	method      *Method
@@ -199,6 +205,9 @@ func (c *clientConn) Write(p []byte) (n int, err error) {
 		buffer := buf.NewSize(c.method.saltLength + M.SocksaddrSerializer.AddrPortLen(c.destination) + len(p))
 		defer buffer.Release()
 		buffer.WriteRandom(c.method.saltLength)
+		if c.method.reducedIVEntropy && buffer.Len() > 6 {
+			C.RemapToPrintable(buffer.To(6))
+		}
 		common.Must(M.SocksaddrSerializer.WriteAddrPort(buffer, c.destination))
 		common.Must1(buffer.Write(p))
 		c.writeStream, err = c.method.encryptConstructor(c.method.key, buffer.To(c.method.saltLength))
@@ -236,6 +245,9 @@ func (c *clientConn) WriteBuffer(buffer *buf.Buffer) error {
 		var err error
 		header := buf.With(buffer.ExtendHeader(c.method.saltLength + M.SocksaddrSerializer.AddrPortLen(c.destination)))
 		header.WriteRandom(c.method.saltLength)
+		if c.method.reducedIVEntropy && header.Len() > 6 {
+			C.RemapToPrintable(header.To(6))
+		}
 		common.Must(M.SocksaddrSerializer.WriteAddrPort(header, c.destination))
 		c.writeStream, err = c.method.encryptConstructor(c.method.key, header.To(c.method.saltLength))
 		if err != nil {

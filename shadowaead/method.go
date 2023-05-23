@@ -38,6 +38,8 @@ type Method struct {
 	keySaltLength int
 	constructor   func(key []byte) (cipher.AEAD, error)
 	key           []byte
+
+	reducedIVEntropy bool
 }
 
 func NewMethod(ctx context.Context, methodName string, options C.MethodOptions) (*Method, error) {
@@ -107,6 +109,10 @@ func (m *Method) DialPacketConn(conn net.Conn) N.NetPacketConn {
 	}
 }
 
+func (m *Method) ReducedIVEntropy(b bool) {
+	m.reducedIVEntropy = b
+}
+
 type clientConn struct {
 	net.Conn
 	method      *Method
@@ -119,6 +125,9 @@ type clientConn struct {
 func (c *clientConn) writeRequest(payload []byte) error {
 	requestBuffer := buf.New()
 	requestBuffer.WriteRandom(c.method.keySaltLength)
+	if c.method.reducedIVEntropy && requestBuffer.Len() > 6 {
+		C.RemapToPrintable(requestBuffer.To(6))
+	}
 	key := make([]byte, c.method.keySaltLength)
 	legacykey.Kdf(c.method.key, requestBuffer.Bytes(), key)
 	writeCipher, err := c.method.constructor(key)

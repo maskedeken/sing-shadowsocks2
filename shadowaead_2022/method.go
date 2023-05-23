@@ -49,6 +49,8 @@ type Method struct {
 	udpBlockDecryptCipher cipher.Block
 	pskList               [][]byte
 	pskHash               []byte
+
+	reducedIVEntropy bool
 }
 
 func NewMethod(ctx context.Context, methodName string, options C.MethodOptions) (C.Method, error) {
@@ -153,6 +155,10 @@ func (m *Method) DialPacketConn(conn net.Conn) N.NetPacketConn {
 	}
 }
 
+func (m *Method) ReducedIVEntropy(b bool) {
+	m.reducedIVEntropy = b
+}
+
 func (m *Method) time() time.Time {
 	if m.timeFunc != nil {
 		return m.timeFunc()
@@ -176,6 +182,9 @@ func (c *clientConn) writeRequest(payload []byte) error {
 	requestBuffer := buf.New()
 	defer requestBuffer.Release()
 	requestBuffer.WriteRandom(c.method.keySaltLength)
+	if c.method.reducedIVEntropy && requestBuffer.Len() > 6 {
+		C.RemapToPrintable(requestBuffer.To(6))
+	}
 	copy(requestSalt, requestBuffer.Bytes())
 	key := SessionKey(c.method.pskList[len(c.method.pskList)-1], requestSalt, c.method.keySaltLength)
 	writeCipher, err := c.method.constructor(key)

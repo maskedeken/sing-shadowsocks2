@@ -12,6 +12,7 @@ type Method interface {
 	DialConn(conn net.Conn, destination M.Socksaddr) (net.Conn, error)
 	DialEarlyConn(conn net.Conn, destination M.Socksaddr) net.Conn
 	DialPacketConn(conn net.Conn) N.NetPacketConn
+	ReducedIVEntropy(bool)
 }
 
 type MethodOptions struct {

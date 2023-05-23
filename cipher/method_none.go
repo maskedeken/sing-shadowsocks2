@@ -44,6 +44,8 @@ func (m *noneMethod) DialPacketConn(conn net.Conn) N.NetPacketConn {
 	}
 }
 
+func (m *noneMethod) ReducedIVEntropy(bool) {}
+
 var (
 	_ N.ExtendedConn       = (*noneConn)(nil)
 	_ N.FrontHeadroom      = (*noneConn)(nil)
