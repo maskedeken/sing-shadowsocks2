@@ -62,6 +62,7 @@ type noneConn struct {
 
 func (c *noneConn) Write(p []byte) (n int, err error) {
 	if !c.requestWritten {
+		println(1)
 		buffer := buf.NewSize(M.SocksaddrSerializer.AddrPortLen(c.destination) + len(p))
 		defer buffer.Release()
 		common.Must(M.SocksaddrSerializer.WriteAddrPort(buffer, c.destination))
@@ -81,6 +82,7 @@ func (c *noneConn) WriteBuffer(buffer *buf.Buffer) error {
 	if !c.requestWritten {
 		header := buf.With(buffer.ExtendHeader(M.SocksaddrSerializer.AddrPortLen(c.destination)))
 		common.Must(M.SocksaddrSerializer.WriteAddrPort(header, c.destination))
+		c.requestWritten = true
 	}
 	return c.ExtendedConn.WriteBuffer(buffer)
 }
